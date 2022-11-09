@@ -16,16 +16,16 @@ _G.uuid = function ()
 end
 
 
-_G.RedisClient = Redis.connect("127.0.0.1", 6379)
+_G.RedisClient = Redis.connect("192.168.31.15", 6379)
 
--- RedisClient:hset("users:baw.developpement@gmail.com", "email", "baw.developpement@gmail.com")
--- RedisClient:hset("users:baw.developpement@gmail.com", "password", "123")
--- RedisClient:hset("users:baw.developpement@gmail.com", "token", "")
--- RedisClient:hset("characters:hello", "name", "hello")
--- RedisClient:hset("characters:hello", "owner", "baw.developpement@gmail.com")
--- RedisClient:hset("characters:yeah", "name", "yeah")
--- RedisClient:hset("characters:yeah", "owner", "baw.developpement@gmail.com")
--- RedisClient:hset("users:baw.developpement@gmail.com", "characters", Json:encode({ "yeah", "hello" }))
+RedisClient:hset("users:baw.developpement@gmail.com", "email", "baw.developpement@gmail.com")
+RedisClient:hset("users:baw.developpement@gmail.com", "password", "123")
+RedisClient:hset("users:baw.developpement@gmail.com", "token", "")
+RedisClient:hset("characters:hello", "name", "hello")
+RedisClient:hset("characters:hello", "owner", "baw.developpement@gmail.com")
+RedisClient:hset("characters:yeah", "name", "yeah")
+RedisClient:hset("characters:yeah", "owner", "baw.developpement@gmail.com")
+RedisClient:hset("users:baw.developpement@gmail.com", "characters", Json:encode({ "yeah", "hello" }))
 
 RedisClient:hset("worlds:nexus", "ip", "127.0.0.1")
 RedisClient:hset("worlds:nexus", "port", "8082")

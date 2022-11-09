@@ -1,0 +1,7 @@
+FROM ubuntu:latest AS build
+
+RUN apt-get -y update
+RUN apt-get -y install software-properties-common
+RUN add-apt-repository -y ppa:bartbes/love-stable
+RUN apt-get -y update
+RUN apt-get -y install love
