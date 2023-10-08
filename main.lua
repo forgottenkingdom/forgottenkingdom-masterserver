@@ -15,32 +15,57 @@ _G.uuid = function ()
     end)
 end
 
+print("HEllo")
 
-_G.RedisClient = Redis.connect("192.168.31.15", 6379)
+
+_G.RedisClient = Redis.connect("127.0.0.1", 6379)
+
+
+print("HEllo3")
 
 RedisClient:hset("users:baw.developpement@gmail.com", "email", "baw.developpement@gmail.com")
 RedisClient:hset("users:baw.developpement@gmail.com", "password", "123")
 RedisClient:hset("users:baw.developpement@gmail.com", "token", "")
-RedisClient:hset("characters:hello", "name", "hello")
-RedisClient:hset("characters:hello", "owner", "baw.developpement@gmail.com")
-RedisClient:hset("characters:yeah", "name", "yeah")
-RedisClient:hset("characters:yeah", "owner", "baw.developpement@gmail.com")
-RedisClient:hset("users:baw.developpement@gmail.com", "characters", Json:encode({ "yeah", "hello" }))
+if (RedisClient:sismember("users", "baw.developpement@gmail.com") == false) then
+    RedisClient:sadd("users", "baw.developpement@gmail.com")
+end
+RedisClient:hset("character:hello", "name", "hello")
+RedisClient:hset("character:hello", "owner", "baw.developpement@gmail.com")
+RedisClient:hset("character:yeah", "name", "yeah")
+RedisClient:hset("character:yeah", "owner", "baw.developpement@gmail.com")
+if (RedisClient:sismember("characters:baw.developpement@gmail.com", "character:hello") == false) then
+    RedisClient:sadd("characters:baw.developpement@gmail.com", "character:hello")
+end
+if (RedisClient:sismember("characters:baw.developpement@gmail.com", "character:yeah") == false) then
+    RedisClient:sadd("characters:baw.developpement@gmail.com", "character:yeah")
+end
+-- Setup worlds
+RedisClient:hset("world:nexus", "ip", "127.0.0.1")
+RedisClient:hset("world:nexus", "port", "8082")
 
-RedisClient:hset("worlds:nexus", "ip", "127.0.0.1")
-RedisClient:hset("worlds:nexus", "port", "8082")
+RedisClient:hset("world:realm_pvp", "ip", "127.0.0.1")
+RedisClient:hset("world:realm_pvp", "port", "8083")
 
-RedisClient:hset("worlds:realm_pvp", "ip", "127.0.0.1")
-RedisClient:hset("worlds:realm_pvp", "port", "8083")
+RedisClient:hset("world:realm_pve", "ip", "127.0.0.1")
+RedisClient:hset("world:realm_pve", "port", "8084")
 
-RedisClient:hset("worlds:realm_pve", "ip", "127.0.0.1")
-RedisClient:hset("worlds:realm_pve", "port", "8084")
-
-RedisClient:hset("worlds:guild", "ip", "127.0.0.1")
-RedisClient:hset("worlds:guild", "port", "8085")
+RedisClient:hset("world:guild", "ip", "127.0.0.1")
+RedisClient:hset("world:guild", "port", "8085")
+if (RedisClient:sismember("worlds", "world:nexus") == false) then
+    RedisClient:sadd("worlds", "world:nexus")
+end
+if (RedisClient:sismember("worlds", "world:realm_pvp") == false) then
+    RedisClient:sadd("worlds", "world:realm_pvp")
+end
+if (RedisClient:sismember("worlds", "world:realm_pve") == false) then
+    RedisClient:sadd("worlds", "world:realm_pve")
+end
+if (RedisClient:sismember("worlds", "world:realm_guild") == false) then
+    RedisClient:sadd("worlds", "world:realm_guild")
+end
 
 local users = RedisClient:hget("users:baw.developpement@gmail.com", "characters")
-local characters = RedisClient:hgetall("characters:yeah")
+local characters = RedisClient:smembers("characters:baw.developpement@gmail.com")
 function isFound ( t )
     local l = 0
 
@@ -50,6 +75,7 @@ function isFound ( t )
 
     return l > 0
 end
+print(#characters)
 print(isFound(characters))
 
 TcpServer.handshake = "00000"
@@ -62,7 +88,7 @@ TcpServer.callbacks.recv = function (data, clientid)
     if packet.id == "connect_with_password" then
         local user = RedisClient:hgetall("users:"..packet.data.email)
     
-        local userFound = isFound(user)
+        local userFound = RedisClient:sismember("users", packet.data.email)
 
         if userFound ~= false then
             if user.email == packet.data.email then
@@ -109,9 +135,9 @@ TcpServer.callbacks.recv = function (data, clientid)
         print("characterName", packet.data.characterName)
         local character = _G.RedisClient:hgetall("characters:"..packet.data.characterName)
         -- Character already exist ?
-            -- YES : Send character data
+            -- YES : Send error
             -- NO : Create character
-        if isFound(character) then
+        if _G.RedisClient:sismember("characters:"..packet.data.email, "character:"..packet.data.characterName) then
             TcpServer:send(_G.bitser.dumps({
                 id = "create_character",
                 data = {
@@ -130,12 +156,10 @@ TcpServer.callbacks.recv = function (data, clientid)
                 life = 100,
                 wallet = 100
             }
-            _G.RedisClient:hset("characters:"..packet.data.characterName, "name", packet.data.characterName)
-            _G.RedisClient:hset("characters:"..packet.data.characterName, "owner", packet.data.email)
-            _G.RedisClient:hset("characters:"..packet.data.characterName, "data", Json:encode(newCharacter))
-            local characters = Json:decode(_G.RedisClient:hget("users:"..packet.data.email, "characters"))
-            table.insert(characters, #characters + 1, packet.data.characterName)
-            _G.RedisClient:hset("users:"..packet.data.email, "characters", Json:encode(characters))
+            _G.RedisClient:hset("character:"..packet.data.characterName, "name", packet.data.characterName)
+            _G.RedisClient:hset("character:"..packet.data.characterName, "owner", packet.data.email)
+            _G.RedisClient:hset("character:"..packet.data.characterName, "data", Json:encode(newCharacter))
+            _G.RedisClient.sadd("characters:"..packet.data.email, "character:"..packet.data.characterName)
             TcpServer:send(_G.bitser.dumps({
                 id = "create_character",
                 data = {
@@ -147,45 +171,70 @@ TcpServer.callbacks.recv = function (data, clientid)
     elseif packet.id == "list_character" then
         local email = packet.data.email
         if email then
-            local characters = _G.RedisClient:hget("users:"..email, "characters")
+            local characters = _G.RedisClient:smembers("characters:"..email)
 
             local charactersTable = {}
-            local decoded = Json:decode(characters)
-            for i, v in ipairs(decoded) do
-                local targetCharacter = _G.RedisClient:hget("characters:"..v, "data")
 
-                local data = Json:decode(targetCharacter)
-                charactersTable[i] = data
+            for index, characterName in ipairs(characters) do
+                local character = _G.RedisClient:hgetall(characterName);
+
+                charactersTable[index] = character;
             end
             
             TcpServer:send(_G.bitser.dumps({
                 id = "list_character",
                 data = {
-                    type = "success",
+                    type = "success", 
                     payload = charactersTable
                 }
             }), clientid)
         end
     elseif packet.id == "play" then
-        local lastWorld = _G.RedisClient:hget("characters:"..packet.data.characterName, "lastWorld")
-        local worldInfo = _G.RedisClient:hgetall("worlds:"..lastWorld)
-
-            
-        TcpServer:send(_G.bitser.dumps({
-            id = "play",
-            data = {
-                type = "success",
-                payload = {
-                    characterName = packet.data.characterName,
-                    world = {
-                        name = lastWorld,
-                        ip = worldInfo.ip,
-                        port = worldInfo.port
+        local lastWorld = _G.RedisClient:hget("character:"..packet.data.characterName, "lastWorld")
+        print(lastWorld)
+        if (lastWorld ~= nil) then
+            local worldInfo = _G.RedisClient:hgetall("worlds:"..lastWorld)    
+            TcpServer:send(_G.bitser.dumps({
+                id = "play",
+                data = {
+                    type = "success",
+                    payload = {
+                        characterName = packet.data.characterName,
+                        world = {
+                            name = lastWorld,
+                            ip = worldInfo.ip,
+                            port = worldInfo.port
+                        }
                     }
                 }
-            }
-        }), clientid)
+            }), clientid)
+        else
+            local worlds = _G.RedisClient:smembers("worlds")
+            print("worlds")
+            print(worlds)
+            print(#worlds)
+            for index, worldName in ipairs(worlds) do
+                local world = _G.RedisClient:hgetall(worldName);
 
+                if world.default == "true" then
+                    TcpServer:send(_G.bitser.dumps({
+                        id = "play",
+                        data = {
+                            type = "success",
+                            payload = {
+                                characterName = packet.data.characterName,
+                                world = {
+                                    name = worldName,
+                                    ip = world.ip,
+                                    port = world.port
+                                }
+                            }
+                        }
+                    }), clientid)
+                    
+                end
+            end
+        end
     end
 end
 
